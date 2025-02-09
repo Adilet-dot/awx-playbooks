@@ -1,0 +1,31 @@
+- name: Установка и обновление конфигурации Zabbix Agent
+  hosts: zabbix_servers
+  become: yes  # Запуск с sudo
+  tasks:
+    - name: Установить Zabbix Agent
+      apt:
+        name: zabbix-agent
+        state: present
+        update_cache: yes
+
+    - name: Убедиться, что Zabbix Agent запущен
+      systemd:
+        name: zabbix-agent
+        state: started
+        enabled: yes
+
+    - name: Изменить строку Server
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^Server=127.0.0.1'
+        line: 'Server=192.168.3.28'
+        state: present
+        backup: yes  # Создание резервной копии файла перед изменением
+
+    - name: Изменить строку ServerActive
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^ServerActive=127.0.0.1'
+        line: 'ServerActive=192.168.3.28'
+        state: present
+        backup: yes  # Создание резервной копии файла перед изменением
