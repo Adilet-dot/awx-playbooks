@@ -1,0 +1,55 @@
+- name: Установка и обновление конфигурации Zabbix Agent
+  hosts: zabbix_servers
+  become: yes
+  vars_files:
+    - vars.yml  # Файл, где задается переменная host_metadata
+
+  tasks:
+    - name: Установить Zabbix Agent
+      apt:
+        name: zabbix-agent
+        state: present
+        update_cache: yes
+
+    - name: Убедиться, что Zabbix Agent запущен
+      systemd:
+        name: zabbix-agent
+        state: started
+        enabled: yes
+
+    - name: Изменить строку Server
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^Server='
+        line: 'Server=172.17.3.68'
+        state: present
+        backup: yes
+
+    - name: Изменить строку ServerActive
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^ServerActive='
+        line: 'ServerActive=172.17.3.68'
+        state: present
+        backup: yes
+
+    - name: Изменить HostnameItem на имя хоста
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^#? HostnameItem='
+        line: 'HostnameItem={{ inventory_hostname }}'
+        state: present
+        backup: yes
+
+    - name: Добавить HostMetadata
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: '^#? HostMetadata='
+        line: 'HostMetadata={{ host_metadata }}'
+        state: present
+        backup: yes
+
+    - name: Перезапустить Zabbix Agent
+      systemd:
+        name: zabbix-agent
+        state: restarted
