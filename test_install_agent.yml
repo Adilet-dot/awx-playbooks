@@ -1,5 +1,5 @@
 - name: Установка и обновление конфигурации Zabbix Agent
-  hosts: "{{ zabbix_target_group }}"
+  hosts: "{{ target_group }}"
   become: yes
 
   tasks:
