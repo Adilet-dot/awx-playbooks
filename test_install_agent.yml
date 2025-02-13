@@ -1,8 +1,6 @@
 - name: Установка и обновление конфигурации Zabbix Agent
-  hosts: zabbix_servers
+  hosts: "{{ zabbix_target_group }}"
   become: yes
-  vars_files:
-    - vars.yml  # Файл, где задается переменная host_metadata
 
   tasks:
     - name: Установить Zabbix Agent
@@ -36,8 +34,8 @@
     - name: Изменить HostnameItem на имя хоста
       lineinfile:
         path: /etc/zabbix/zabbix_agentd.conf
-        regexp: '^#? HostnameItem='
-        line: 'HostnameItem={{ inventory_hostname }}'
+        regexp: '^Hostname='
+        line: 'Hostname={{ inventory_hostname }}'
         state: present
         backup: yes
 
