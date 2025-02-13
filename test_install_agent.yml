@@ -31,10 +31,10 @@
         state: present
         backup: yes
 
-    - name: Изменить HostnameItem на имя хоста
+    - name: Изменить Hostname на имя хоста
       lineinfile:
         path: /etc/zabbix/zabbix_agentd.conf
-        regexp: '^Hostname='
+        regexp: '^#? Hostname='
         line: 'Hostname={{ inventory_hostname }}'
         state: present
         backup: yes
