@@ -2,7 +2,7 @@
   hosts: "{{ target_group }}"
   vars:
     ssh_key_repo: "https://gitlab.cl.nat.kz/adilet.jarassov/ssh-public-keys-storage/raw/main"
-    local_key_path: "/tmp/{{ ssh_key_file }}"
+    local_key_path: "/var/tmp/{{ ssh_key_file }}"
 
   tasks:
     - name: Download SSH key from GitLab
