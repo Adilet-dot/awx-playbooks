@@ -2,7 +2,8 @@
   hosts: "{{ target_group }}"
   vars:
     ssh_key_repo: "https://gitlab.cl.nat.kz/adilet.jarassov/ssh-public-keys-storage/raw/main"
-    local_key_path: "/var/tmp/{{ ssh_key_file }}"
+    local_key_path: "/tmp/{{ ssh_key_file }}"
+    access_log_file: "/var/tmp/ssh_access.log"
 
   tasks:
     - name: Download SSH key from GitLab
@@ -22,3 +23,16 @@
         state: present
         key: "{{ ssh_key }}"
         path: "/root/.ssh/authorized_keys"
+
+    - name: Log access to group(s) for {{ ssh_key_file }}
+      lineinfile:
+        path: "{{ access_log_file }}"
+        line: "{{ ssh_key_file }} has access to {{ target_group }}"
+        mode: '0644'
+        state: present
+      delegate_to: localhost
+
+
+    - name: Display access log entry for daniyar.mukhtarov
+      debug:
+        msg: "Logged access for {{ ssh_key_file }} to group {{ target_group }}"
