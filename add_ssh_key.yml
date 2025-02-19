@@ -1,6 +1,5 @@
 - name: Download and add SSH key to remote server
   hosts: "{{ target_group }}"
-  become: yes
   vars:
     ssh_key_repo: "https://gitlab.cl.nat.kz/adilet.jarassov/ssh-public-keys-storage/raw/main"
     local_key_path: "/tmp/{{ ssh_key_file }}"
