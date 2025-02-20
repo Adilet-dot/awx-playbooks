@@ -3,7 +3,7 @@
   vars:
     ssh_key_repo: "https://gitlab.cl.nat.kz/adilet.jarassov/ssh-public-keys-storage/raw/main"
     local_key_path: "/tmp/{{ ssh_key_file }}"
-    access_log_file: "/var/tmp/ssh_access.log"
+    access_log_file: "/opt/ssh_center_access.log"
 
   tasks:
     - name: Download SSH key from GitLab
@@ -30,9 +30,12 @@
         line: "{{ ssh_key_file }} has access to {{ target_group }}"
         mode: '0644'
         state: present
-      delegate_to: localhost
+      delegate_to: 172.17.3.68
+      become: true
+      vars:
+        ansible_ssh_user: adlet-test
+        ansible_ssh_pass: "jhufybpfwbz"
 
-
-    - name: Display access log entry for daniyar.mukhtarov
+    - name: Display access log entry for user
       debug:
         msg: "Logged access for {{ ssh_key_file }} to group {{ target_group }}"
