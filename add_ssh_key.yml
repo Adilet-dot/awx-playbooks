@@ -17,6 +17,15 @@
       set_fact:
         ssh_key: "{{ lookup('file', local_key_path) | regex_replace('\\s+', ' ') }}"
 
+    - name: Remove login restriction from authorized_keys (if exists)
+      replace:
+        path: "/root/.ssh/authorized_keys"
+        regexp: 'no-port-forwarding,no-agent-forwarding,no-X11-forwarding,command="echo .*exit 142"'
+        replace: ''
+      become: yes
+      become_method: sudo
+      become_flags: "-i"
+
     - name: Add the public SSH key to authorized_keys for root user
       authorized_key:
         user: root
