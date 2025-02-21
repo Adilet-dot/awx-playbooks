@@ -24,7 +24,8 @@
         key: "{{ ssh_key }}"
         path: "/root/.ssh/authorized_keys"
       become: yes
-      become_method: su
+      become_method: sudo
+      become_flags: su -
 
     - name: Log access to group(s) for {{ ssh_key_file }}
       lineinfile:
