@@ -2,7 +2,7 @@
   hosts: "{{ target_group }}"
   vars:
     ssh_key_repo: "https://gitlab.cl.nat.kz/adilet.jarassov/ssh-public-keys-storage/raw/main"
-    ssh_key_file: "{{ awx_user }}"  # Формируем имя файла на основе логина
+    ssh_key_file: "{{ tower_user_name }}"  # Формируем имя файла на основе логина
     local_key_path: "/tmp/{{ ssh_key_file }}"
     access_log_file: "/home/adlet-test/ssh_center_access.log"
 
