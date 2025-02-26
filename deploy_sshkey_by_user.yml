@@ -41,14 +41,8 @@
       set_fact:
         ssh_key: "{{ lookup('file', local_key_path) | regex_replace('\\s+', ' ') }}"
 
-    - name: Deploy SSH key to authorized servers
-      include_tasks: deploy_key.yml
-      loop: "{{ target_groups }}"
-      loop_control:
-        loop_var: target_group
-
-- name: Deploy SSH key
-  hosts: "{{ target_group }}"
+- name: Deploy SSH key to authorized servers
+  hosts: "{{ target_groups }}"
   tasks:
     - name: Ensure the .ssh directory exists
       file:
@@ -61,10 +55,10 @@
       authorized_key:
         user: root
         state: present
-        key: "{{ ssh_key }}"
+        key: "{{ hostvars['localhost']['ssh_key'] }}"
         path: "/root/.ssh/authorized_keys"
       become: yes
 
     - name: Confirm key deployment
       debug:
-        msg: "SSH key for {{ ssh_key_file }} successfully added to {{ target_group }}"
+        msg: "SSH key for {{ hostvars['localhost']['ssh_key_file'] }} successfully added to {{ inventory_hostname }}"
