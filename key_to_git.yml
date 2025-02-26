@@ -25,20 +25,3 @@
         status_code: [201, 409] # 201 - created, 409 - already exists
       register: add_key_result
 
-    - name: Update SSH key if it already exists
-      uri:
-        url: "{{ gitlab_api_url }}/{{ ssh_key_file | urlencode }}"
-        method: "PUT"
-        headers:
-          PRIVATE-TOKEN: "{{ gitlab_token }}"
-        body_format: "json"
-        body:
-          branch: "{{ branch }}"
-          content: "{{ ssh_key }}"
-          commit_message: "Update SSH key for {{ tower_user_name }}"
-          encoding: "text"
-        when: add_key_result.status == 409
-
-    - name: Confirm SSH key added or updated
-      debug:
-        msg: "SSH key for {{ tower_user_name }} has been successfully added or updated!"
