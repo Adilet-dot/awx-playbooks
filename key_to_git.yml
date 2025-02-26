@@ -1,0 +1,44 @@
+---
+- name: Add SSH key to GitLab repository
+  hosts: localhost
+  vars:
+    gitlab_api_url: "https://gitlab.cl.nat.kz/api/v4/projects/619/repository/files"
+    gitlab_token: "ds_Nk5gA8AkB_XL3YtUM"
+    ssh_key: "{{ ssh_key_content }}"
+    ssh_key_file: "{{ tower_user_name }}"
+    branch: "main"
+    commit_message: "Add SSH key for {{ tower_user_name }}"
+
+  tasks:
+    - name: Prepare SSH key payload
+      uri:
+        url: "{{ gitlab_api_url }}/{{ ssh_key_file | urlencode }}"
+        method: "POST"
+        headers:
+          PRIVATE-TOKEN: "{{ gitlab_token }}"
+        body_format: "json"
+        body:
+          branch: "{{ branch }}"
+          content: "{{ ssh_key }}"
+          commit_message: "{{ commit_message }}"
+          encoding: "text"
+        status_code: [201, 409] # 201 - created, 409 - already exists
+      register: add_key_result
+
+    - name: Update SSH key if it already exists
+      uri:
+        url: "{{ gitlab_api_url }}/{{ ssh_key_file | urlencode }}"
+        method: "PUT"
+        headers:
+          PRIVATE-TOKEN: "{{ gitlab_token }}"
+        body_format: "json"
+        body:
+          branch: "{{ branch }}"
+          content: "{{ ssh_key }}"
+          commit_message: "Update SSH key for {{ awx_user }}"
+          encoding: "text"
+        when: add_key_result.status == 409
+
+    - name: Confirm SSH key added or updated
+      debug:
+        msg: "SSH key for {{ tower_user_name }} has been successfully added or updated!"
