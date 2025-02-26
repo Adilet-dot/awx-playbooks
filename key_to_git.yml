@@ -35,7 +35,7 @@
         body:
           branch: "{{ branch }}"
           content: "{{ ssh_key }}"
-          commit_message: "Update SSH key for {{ awx_user }}"
+          commit_message: "Update SSH key for {{ tower_user_name }}"
           encoding: "text"
         when: add_key_result.status == 409
 
