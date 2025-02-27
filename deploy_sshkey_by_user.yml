@@ -18,12 +18,12 @@
         ansible_password: "{{ remote_password }}"
         ansible_become: no
 
-    - name: Debug user groups
-      ansible.builtin.debug:
-        var: user_groups.stdout
+    - name: Set user groups as fact
+      ansible.builtin.set_fact:
+        target_groups: "{{ user_groups.stdout.split(',') }}"
 
 - name: Add SSH key to target groups
-  hosts: "{{ user_groups.stdout.split(',') }}"
+  hosts: "{{ target_groups }}"
   gather_facts: no
   vars:
     ssh_key_repo: "https://gitlab.cl.nat.kz/adilet.jarassov/ssh-public-keys-storage/raw/main"
