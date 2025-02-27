@@ -22,14 +22,25 @@
       ansible.builtin.debug:
         var: user_groups.stdout
 
-    - name: Set target groups as global fact
+    - name: Set target groups as fact
       ansible.builtin.set_fact:
         target_group: "{{ user_groups.stdout.split(',') }}"
       run_once: true
-      delegate_to: localhost
+
+    - name: Debug target group fact
+      ansible.builtin.debug:
+        var: target_group
 
 - name: Download and add SSH key to remote server
-  hosts: "{{ target_group }}"
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Debug target group before using
+      ansible.builtin.debug:
+        var: target_group
+
+- name: Download and add SSH key to remote server
+  hosts: "{{ target_group }}"  # Теперь должно подставляться корректно
   gather_facts: no
   vars:
     ssh_key_repo: "https://gitlab.cl.nat.kz/adilet.jarassov/ssh-public-keys-storage/raw/main"
@@ -38,10 +49,6 @@
     access_log_file: "/home/adlet-test/ssh_center_access.log"
 
   tasks:
-    - name: Debug target group
-      ansible.builtin.debug:
-        msg: "Target group: {{ target_group }}"
-
     - name: Download SSH key from GitLab
       ansible.builtin.get_url:
         url: "{{ ssh_key_repo }}/{{ ssh_key_file }}"
@@ -53,15 +60,6 @@
       ansible.builtin.set_fact:
         ssh_key: "{{ lookup('file', local_key_path) | regex_replace('\\s+', ' ') }}"
 
-    - name: Remove login restriction from authorized_keys (if exists)
-      ansible.builtin.replace:
-        path: "/root/.ssh/authorized_keys"
-        regexp: 'no-port-forwarding,no-agent-forwarding,no-X11-forwarding,command="echo .*exit 142"'
-        replace: ''
-      become: yes
-      become_method: sudo
-      become_flags: "-i"
-
     - name: Add the public SSH key to authorized_keys for root user
       ansible.builtin.authorized_key:
         user: root
@@ -71,18 +69,3 @@
       become: yes
       become_method: sudo
       become_flags: "-i"
-
-    - name: Log access to group(s) for {{ ssh_key_file }}
-      ansible.builtin.lineinfile:
-        path: "{{ access_log_file }}"
-        line: "{{ ssh_key_file }} has access to {{ target_group }}"
-        mode: '0644'
-        state: present
-      delegate_to: 172.17.3.68
-      vars:
-        ansible_ssh_user: adlet-test
-        ansible_ssh_pass: "jhufybpfwbz"
-
-    - name: Display access log entry for user
-      ansible.builtin.debug:
-        msg: "Logged access for {{ ssh_key_file }} to group {{ target_group }}"
