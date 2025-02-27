@@ -1,13 +1,14 @@
 ---
-- name: Determine target groups from access log
+- name: Deploy SSH key based on access log
   hosts: localhost
   gather_facts: no
   vars:
     access_log_file: "/home/adlet-test/ssh_center_access.log"
+    ssh_key_repo: "https://gitlab.cl.nat.kz/adilet.jarassov/ssh-public-keys-storage/raw/main"
     ssh_key_file: "{{ tower_user_name }}"
 
   tasks:
-    - name: Read access log and get user's groups
+    - name: Get target groups from access log
       command: "grep {{ ssh_key_file }} {{ access_log_file }}"
       register: access_log_output
       delegate_to: 172.17.3.68
@@ -16,38 +17,19 @@
         ansible_ssh_pass: "jhufybpfwbz"
       changed_when: false
 
-    - name: Extract target groups
+    - name: Extract and deduplicate groups
       set_fact:
-        target_groups: "{{ access_log_output.stdout | regex_findall('has access to (\\S+)') }}"
-
-    - name: Debug target groups
-      debug:
-        var: target_groups
+        target_groups: "{{ access_log_output.stdout | regex_findall('has access to (\\S+)') | unique }}"
 
 - name: Deploy SSH key to authorized servers
   hosts: "{{ target_groups }}"
   gather_facts: no
-  vars:
-    ssh_key_repo: "https://gitlab.cl.nat.kz/adilet.jarassov/ssh-public-keys-storage/raw/main"
-    ssh_key_file: "{{ tower_user_name }}"  
-    local_key_path: "/tmp/{{ ssh_key_file }}"
 
   tasks:
-    - name: Download SSH key from GitLab
-      get_url:
-        url: "{{ ssh_key_repo }}/{{ ssh_key_file }}"
-        dest: "{{ local_key_path }}"
-        mode: '0644'
-      delegate_to: localhost
-
-    - name: Read SSH public key from file and format correctly
-      set_fact:
-        ssh_key: "{{ lookup('file', local_key_path) | regex_replace('\\s+', ' ') }}"
-
-    - name: Add the public SSH key to authorized_keys for root user
+    - name: Add SSH key to authorized_keys
       authorized_key:
         user: root
         state: present
-        key: "{{ ssh_key }}"
+        key: "{{ lookup('url', '{{ ssh_key_repo }}/{{ tower_user_name }}') }}"
         path: "/root/.ssh/authorized_keys"
       become: yes
