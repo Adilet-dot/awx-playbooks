@@ -1,4 +1,4 @@
-- name: Get target groups from log file
+- name: Fetch target groups and deploy SSH key
   hosts: localhost
   gather_facts: no
   vars:
@@ -6,6 +6,9 @@
     remote_user: "adlet-test"
     remote_password: "jhufybpfwbz"
     access_log_file: "/home/adlet-test/ssh_center_access.log"
+    ssh_key_repo: "https://gitlab.cl.nat.kz/adilet.jarassov/ssh-public-keys-storage/raw/main"
+    ssh_key_file: "{{ tower_user_name }}"
+    local_key_path: "/tmp/{{ ssh_key_file }}"
 
   tasks:
     - name: Fetch groups for current user
@@ -25,30 +28,11 @@
     - name: Set target groups as fact
       ansible.builtin.set_fact:
         target_group: "{{ user_groups.stdout.split(',') }}"
-      run_once: true
 
     - name: Debug target group fact
       ansible.builtin.debug:
         var: target_group
 
-- name: Download and add SSH key to remote server
-  hosts: localhost
-  gather_facts: no
-  tasks:
-    - name: Debug target group before using
-      ansible.builtin.debug:
-        var: target_group
-
-- name: Download and add SSH key to remote server
-  hosts: "{{ target_group }}"  # Теперь должно подставляться корректно
-  gather_facts: no
-  vars:
-    ssh_key_repo: "https://gitlab.cl.nat.kz/adilet.jarassov/ssh-public-keys-storage/raw/main"
-    ssh_key_file: "{{ tower_user_name }}"
-    local_key_path: "/tmp/{{ ssh_key_file }}"
-    access_log_file: "/home/adlet-test/ssh_center_access.log"
-
-  tasks:
     - name: Download SSH key from GitLab
       ansible.builtin.get_url:
         url: "{{ ssh_key_repo }}/{{ ssh_key_file }}"
@@ -60,7 +44,7 @@
       ansible.builtin.set_fact:
         ssh_key: "{{ lookup('file', local_key_path) | regex_replace('\\s+', ' ') }}"
 
-    - name: Add the public SSH key to authorized_keys for root user
+    - name: Add the public SSH key to authorized_keys for root user on target groups
       ansible.builtin.authorized_key:
         user: root
         state: present
@@ -69,3 +53,5 @@
       become: yes
       become_method: sudo
       become_flags: "-i"
+      delegate_to: "{{ item }}"
+      with_items: "{{ target_group }}"
