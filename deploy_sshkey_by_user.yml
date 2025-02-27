@@ -22,9 +22,11 @@
       ansible.builtin.debug:
         var: user_groups.stdout
 
-    - name: Set target groups
+    - name: Set target groups as global fact
       ansible.builtin.set_fact:
         target_group: "{{ user_groups.stdout.split(',') }}"
+      run_once: true
+      delegate_to: localhost
 
 - name: Download and add SSH key to remote server
   hosts: "{{ target_group }}"
@@ -36,6 +38,10 @@
     access_log_file: "/home/adlet-test/ssh_center_access.log"
 
   tasks:
+    - name: Debug target group
+      ansible.builtin.debug:
+        msg: "Target group: {{ target_group }}"
+
     - name: Download SSH key from GitLab
       ansible.builtin.get_url:
         url: "{{ ssh_key_repo }}/{{ ssh_key_file }}"
