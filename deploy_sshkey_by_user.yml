@@ -1,35 +1,38 @@
 ---
-- name: Deploy SSH key to allowed servers based on access log
+- name: Determine target groups from access log
   hosts: localhost
+  gather_facts: no
   vars:
-    ssh_key_repo: "https://gitlab.cl.nat.kz/adilet.jarassov/ssh-public-keys-storage/raw/main"
-    ssh_key_file: "{{ tower_user_name }}"  # Имя файла по логину в AWX
-    local_key_path: "/tmp/{{ ssh_key_file }}"
     access_log_file: "/home/adlet-test/ssh_center_access.log"
+    ssh_key_file: "{{ tower_user_name }}"
 
   tasks:
-    - name: Get user access info from the log
-      command: "grep '{{ ssh_key_file }} has access to' {{ access_log_file }}"
+    - name: Read access log and get user's groups
+      command: "grep {{ ssh_key_file }} {{ access_log_file }}"
+      register: access_log_output
       delegate_to: 172.17.3.68
-      register: access_info
-      changed_when: false
       vars:
         ansible_ssh_user: adlet-test
         ansible_ssh_pass: "jhufybpfwbz"
+      changed_when: false
 
-    - name: Extract target groups from access log
+    - name: Extract target groups
       set_fact:
-        target_groups: "{{ access_info.stdout_lines | map('regex_replace', '.*has access to (.+)', '\\1') | list }}"
+        target_groups: "{{ access_log_output.stdout | regex_findall('has access to (\\S+)') }}"
 
-    - name: Fail if no access groups found
-      fail:
-        msg: "No access groups found for user {{ ssh_key_file }}"
-      when: target_groups | length == 0
-
-    - name: Display target groups
+    - name: Debug target groups
       debug:
-        msg: "User {{ ssh_key_file }} has access to the following groups: {{ target_groups | join(', ') }}"
+        var: target_groups
 
+- name: Deploy SSH key to authorized servers
+  hosts: "{{ target_groups }}"
+  gather_facts: no
+  vars:
+    ssh_key_repo: "https://gitlab.cl.nat.kz/adilet.jarassov/ssh-public-keys-storage/raw/main"
+    ssh_key_file: "{{ tower_user_name }}"  
+    local_key_path: "/tmp/{{ ssh_key_file }}"
+
+  tasks:
     - name: Download SSH key from GitLab
       get_url:
         url: "{{ ssh_key_repo }}/{{ ssh_key_file }}"
@@ -37,28 +40,14 @@
         mode: '0644'
       delegate_to: localhost
 
-    - name: Read SSH public key from file
+    - name: Read SSH public key from file and format correctly
       set_fact:
         ssh_key: "{{ lookup('file', local_key_path) | regex_replace('\\s+', ' ') }}"
 
-- name: Deploy SSH key to authorized servers
-  hosts: "{{ target_groups }}"
-  tasks:
-    - name: Ensure the .ssh directory exists
-      file:
-        path: "/root/.ssh"
-        state: directory
-        mode: '0700'
-      become: yes
-
-    - name: Add the public SSH key to authorized_keys
+    - name: Add the public SSH key to authorized_keys for root user
       authorized_key:
         user: root
         state: present
-        key: "{{ hostvars['localhost']['ssh_key'] }}"
+        key: "{{ ssh_key }}"
         path: "/root/.ssh/authorized_keys"
       become: yes
-
-    - name: Confirm key deployment
-      debug:
-        msg: "SSH key for {{ hostvars['localhost']['ssh_key_file'] }} successfully added to {{ inventory_hostname }}"
