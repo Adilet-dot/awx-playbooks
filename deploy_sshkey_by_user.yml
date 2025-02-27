@@ -1,35 +1,36 @@
----
-- name: Deploy SSH key based on access log
+- name: Get target groups from log file
   hosts: localhost
   gather_facts: no
   vars:
+    remote_host: "172.17.3.68"
+    remote_user: "adlet-test"
+    remote_password: "jhufybpfwbz"
     access_log_file: "/home/adlet-test/ssh_center_access.log"
+
+  tasks:
+    - name: Fetch groups for current user
+      ansible.builtin.shell: |
+        grep {{ tower_user_name }} {{ access_log_file }} | awk '{print $NF}' | tr '\n' ',' | sed 's/,$//'
+      register: user_groups
+      delegate_to: "{{ remote_host }}"
+      vars:
+        ansible_user: "{{ remote_user }}"
+        ansible_password: "{{ remote_password }}"
+        ansible_become: no
+
+    - name: Debug user groups
+      ansible.builtin.debug:
+        var: user_groups.stdout
+
+- name: Add SSH key to target groups
+  hosts: "{{ user_groups.stdout.split(',') }}"
+  gather_facts: no
+  vars:
     ssh_key_repo: "https://gitlab.cl.nat.kz/adilet.jarassov/ssh-public-keys-storage/raw/main"
     ssh_key_file: "{{ tower_user_name }}"
-
   tasks:
-    - name: Get target groups from access log
-      command: "grep {{ ssh_key_file }} {{ access_log_file }}"
-      register: access_log_output
-      delegate_to: 172.17.3.68
-      vars:
-        ansible_ssh_user: adlet-test
-        ansible_ssh_pass: "jhufybpfwbz"
-      changed_when: false
-
-    - name: Extract and deduplicate groups
-      set_fact:
-        target_groups: "{{ access_log_output.stdout | regex_findall('has access to (\\S+)') | unique }}"
-
-- name: Deploy SSH key to authorized servers
-  hosts: "{{ target_groups }}"
-  gather_facts: no
-
-  tasks:
-    - name: Add SSH key to authorized_keys
-      authorized_key:
-        user: root
-        state: present
-        key: "{{ lookup('url', '{{ ssh_key_repo }}/{{ tower_user_name }}') }}"
-        path: "/root/.ssh/authorized_keys"
-      become: yes
+    - name: Download SSH key
+      ansible.builtin.get_url:
+        url: "{{ ssh_key_repo }}/{{ ssh_key_file }}.pub"
+        dest: "/home/{{ ansible_user }}/.ssh/authorized_keys"
+        mode: '0600'
